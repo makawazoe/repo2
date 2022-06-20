@@ -26,10 +26,7 @@ with open(file_input, "r") as f:
         sys.exit("\nError\nInput file is not XML file.\nRequirement: blast output file with run command option '-outfmt 16' (Single-file BLAST XML2)\n")
     else:
         print("\nFiletype is xml. OK\n")
-        pass
-
-with open(file_input, "r") as f:
-    blastresult = f.read()
+        blastresult = f.read()
 
 # soup
 print("\nReading file\n")
