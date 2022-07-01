@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 
-# 2022-07-01 version 4: blastnpxparse.py
+# 2022-07-01 version 5: blastnpxparse.py
 
 import sys
 import os
 #import re
+import subprocess
 import csv
 from bs4 import BeautifulSoup
 import collections
@@ -17,15 +18,41 @@ if len(args) !=2:
 
 # initial parameters
 file_input = args[1]
-file_prefix = os.path.splitext(os.path.basename(file_input))[0]
+file_prefix_init = os.path.splitext(os.path.basename(file_input))[0]
+file_conversion = '0'
 path_input = os.getcwd()
 
 # file open
-with open(file_input, "r") as f:
-    if not 'xml' in f.readline():
-        sys.exit("\nError\nInput is not XML file.\nRequirement: blastx output file with run command option '-outfmt 16' (Single-file BLAST XML2)\n")
+with open(file_input, "r", encoding="utf-8") as f:
+    headline = f.readline()
+    if 'xml' in headline:
+        print("\nInput file type is XML.\n\n\nReading file ...\n")
+        file_prefix = file_prefix_init
+        blastxml = f.read()
+        if 'blastn' in blastxml:
+            mode = 'blastn'
+            print("\nblastn output file confirmed.\n")
+        elif 'blastp' in blastxml:
+            mode = 'blastp'
+            print("\nblastp output file confirmed.\n")
+        elif 'blastx' in blastxml:
+            mode = 'blastx'
+            print("\nblastx output file confirmed.\n")
+    elif 'Blast4-archive' in headline:
+        file_conversion = '1'
+        print("\nInput file type is ASN.1.\n\n\nStarting file conversion to XML (Single-file BLAST XML2)\n")
+        pass
     else:
-        print("\nInput file type confirmed.\n\n\nReading file ...\n")
+        sys.exit("\nError\nInput is neither XML nor ASN.1 file.\nRequirement: blast[n, p, x] output file with run command option '-outfmt 11' (BLAST archive (ASN.1)) or '-outfmt 16' (Single-file BLAST XML2)\n")
+
+if file_conversion == '1':
+    file_conv = file_prefix_init + '_16' + os.path.splitext(os.path.basename(file_input))[1]
+    file_prefix = file_prefix_init + '_16'
+    cmd_list = ['blast_formatter','-archive',file_input,'-out',file_conv,'-outfmt',16]
+    cmd = map(str, cmd_list)
+    blastformatter_run = subprocess.run(cmd)
+    print("\nblast_formatter finished.\n\n\nReading file ...\n")
+    with open(file_conv, "r", encoding="utf-8") as f:
         blastxml = f.read()
         if 'blastn' in blastxml:
             mode = 'blastn'
@@ -37,7 +64,9 @@ with open(file_input, "r") as f:
             mode = 'blastx'
             print("\nblastx output file confirmed.\n")
         else:
-            sys.exit("\nError\nInput is not blastn, blastp, blastx output file.\nRequirement: blast[n, p, x] output file with run command option '-outfmt 16' (Single-file BLAST XML2)\n")
+            sys.exit("\nError\nInput is not blast[n, p, x] file.\nRequirement: blast[n, p, x] output file with run command option '-outfmt 11' (BLAST archive (ASN.1)) or '-outfmt 16' (Single-file BLAST XML2)\n")
+elif file_conversion == '0':
+    pass
 
 # soup
 soup_1 = BeautifulSoup(blastxml, "lxml-xml")
@@ -150,7 +179,7 @@ for result_query in result_queries:
                 tsv_out = query_info + hit_info + alinum[i:i+1] + bitscore[i:i+1] + score[i:i+1] + evalue[i:i+1] + ident[i:i+1] + positive[i:i+1] + query_f[i:i+1] + query_t[i:i+1] + subj_f[i:i+1] + subj_t[i:i+1] + alilen[i:i+1] + gaps[i:i+1]
             elif mode == 'blastx':
                 tsv_out = query_info + hit_info + alinum[i:i+1] + bitscore[i:i+1] + score[i:i+1] + evalue[i:i+1] + ident[i:i+1] + positive[i:i+1] + query_fr[i:i+1] + query_f[i:i+1] + query_t[i:i+1] + subj_f[i:i+1] + subj_t[i:i+1] + alilen[i:i+1] + gaps[i:i+1]
-            with open(output_file1, "a") as f:
+            with open(output_file1, "a", encoding="utf-8") as f:
                 writer = csv.writer(f, delimiter='\t')
                 writer.writerow(tsv_out)
     query_summary = str.splitlines(query_acc) + str.splitlines(hit_num_total[-1])
@@ -158,7 +187,7 @@ for result_query in result_queries:
         total = collections.Counter(hit_sciname_total) # blastn specific
     else:
         total = collections.Counter(hit_title_total)   # blastp, blastx
-    with open(output_file2, "a") as f:
+    with open(output_file2, "a", encoding="utf-8") as f:
         writer = csv.writer(f, delimiter='\t')
         writer.writerow(query_summary)
         for k, v in total.items():
