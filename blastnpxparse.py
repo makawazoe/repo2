@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# 2022-07-07 version 5.3: blastnpxparse.py
+# 2022-07-07 version 6.0: blastnpxparse.py
 
 import sys
 import os
@@ -192,15 +192,23 @@ for result_query in result_queries:
             else:
                 pass
         cont_num = len(list(alinum))
+        identity = [x / y * 100 for (x, y) in zip(map(int, ident), map(int, alilen))]
         for i in range(cont_num):
+            if mode == 'blastx':
+                aa_conv_len = int(query_len) // 3                                # blastx specific
+                coverage = ((int(alilen[i]) - int(gaps[i])) / aa_conv_len * 100) # blastx specific
+            elif mode != 'blastx':
+                coverage = ((int(alilen[i]) - int(gaps[i])) / int(query_len) * 100)
+            coverage_f = "{:.0f}".format(coverage)
+            identity_f = "{:.0f}".format(identity[i])
             if mode == 'blastn' and type(hit_title) == list:
-                tsv_out = query_info + hit_info + alinum[i:i+1] + bitscore[i:i+1] + score[i:i+1] + evalue[i:i+1] + ident[i:i+1] + query_s[i:i+1] + subj_s[i:i+1] + query_f[i:i+1] + query_t[i:i+1] + subj_f[i:i+1] + subj_t[i:i+1] + alilen[i:i+1] + gaps[i:i+1] + hit_title
+                tsv_out = query_info + hit_info + alinum[i:i+1] + bitscore[i:i+1] + score[i:i+1] + evalue[i:i+1] + ident[i:i+1] + query_s[i:i+1] + subj_s[i:i+1] + query_f[i:i+1] + query_t[i:i+1] + subj_f[i:i+1] + subj_t[i:i+1] + alilen[i:i+1] + gaps[i:i+1] + str.splitlines(coverage_f) + str.splitlines(identity_f) + hit_title
             elif mode == 'blastn' and type(hit_title) == str:
-                tsv_out = query_info + hit_info + alinum[i:i+1] + bitscore[i:i+1] + score[i:i+1] + evalue[i:i+1] + ident[i:i+1] + query_s[i:i+1] + subj_s[i:i+1] + query_f[i:i+1] + query_t[i:i+1] + subj_f[i:i+1] + subj_t[i:i+1] + alilen[i:i+1] + gaps[i:i+1] + str.splitlines(hit_title)
+                tsv_out = query_info + hit_info + alinum[i:i+1] + bitscore[i:i+1] + score[i:i+1] + evalue[i:i+1] + ident[i:i+1] + query_s[i:i+1] + subj_s[i:i+1] + query_f[i:i+1] + query_t[i:i+1] + subj_f[i:i+1] + subj_t[i:i+1] + alilen[i:i+1] + gaps[i:i+1] + str.splitlines(coverage_f) + str.splitlines(identity_f) + str.splitlines(hit_title)
             elif mode == 'blastp':
-                tsv_out = query_info + hit_info + alinum[i:i+1] + bitscore[i:i+1] + score[i:i+1] + evalue[i:i+1] + ident[i:i+1] + positive[i:i+1] + query_f[i:i+1] + query_t[i:i+1] + subj_f[i:i+1] + subj_t[i:i+1] + alilen[i:i+1] + gaps[i:i+1]
+                tsv_out = query_info + hit_info + alinum[i:i+1] + bitscore[i:i+1] + score[i:i+1] + evalue[i:i+1] + ident[i:i+1] + positive[i:i+1] + query_f[i:i+1] + query_t[i:i+1] + subj_f[i:i+1] + subj_t[i:i+1] + alilen[i:i+1] + gaps[i:i+1] + str.splitlines(coverage_f) + str.splitlines(identity_f)
             elif mode == 'blastx':
-                tsv_out = query_info + hit_info + alinum[i:i+1] + bitscore[i:i+1] + score[i:i+1] + evalue[i:i+1] + ident[i:i+1] + positive[i:i+1] + query_fr[i:i+1] + query_f[i:i+1] + query_t[i:i+1] + subj_f[i:i+1] + subj_t[i:i+1] + alilen[i:i+1] + gaps[i:i+1]
+                tsv_out = query_info + hit_info + alinum[i:i+1] + bitscore[i:i+1] + score[i:i+1] + evalue[i:i+1] + ident[i:i+1] + positive[i:i+1] + query_fr[i:i+1] + query_f[i:i+1] + query_t[i:i+1] + subj_f[i:i+1] + subj_t[i:i+1] + alilen[i:i+1] + gaps[i:i+1] + str.splitlines(coverage_f) + str.splitlines(identity_f)
             with open(output_file1, "a", encoding="utf-8") as f:
                 writer = csv.writer(f, delimiter='\t')
                 writer.writerow(tsv_out)
