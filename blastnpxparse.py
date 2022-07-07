@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# 2022-07-01 version 5: blastnpxparse.py
+# 2022-07-07 version 5.3: blastnpxparse.py
 
 import sys
 import os
@@ -79,6 +79,15 @@ output_file2 = file_prefix + '_' + mode + 'summary.tsv'
 print("\nExtracting ...\n")
 
 for result_query in result_queries:
+    if result_query.find('message') is None:
+        pass
+    elif result_query.find('message').text == 'No hits found':
+        query_acc = result_query.find('query-title').text
+        query_summary = str.splitlines(query_acc) + str.splitlines('No hits found')
+        with open(output_file2, "a", encoding="utf-8") as f:
+            writer = csv.writer(f, delimiter='\t')
+            writer.writerow(query_summary)
+        continue
     query_acc = result_query.find('query-title').text
     query_len = result_query.find('query-len').text
     query_info = str.splitlines(query_acc) + str.splitlines(query_len)
@@ -95,10 +104,19 @@ for result_query in result_queries:
             hit_acc = query_hit.find('id').text
         else:
             hit_acc = query_hit.find('accession').text
-        if mode != 'blastn':
+        if query_hit.find('title') is None:
+            hit_title = "null"
+            if mode != 'blastn':
+                hit_title_total.append(hit_title)
+            else:
+                pass
+        else:
             hit_title_full = query_hit.find('title').text.split(';') # blastp, blastx
             hit_title = hit_title_full[0:1]                          # blastp, blastx
-            hit_title_total = hit_title_total + hit_title            # blastp, blastx
+            if mode != 'blastn':
+                hit_title_total = hit_title_total + hit_title        # blastp, blastx
+            else:
+                pass
         if query_hit.find('taxid') is None:
             hit_taxid = "null"
         else:
@@ -114,8 +132,10 @@ for result_query in result_queries:
         hit_len = query_hit.find('len').text
         if mode == 'blastn':
             hit_info = str.splitlines(hit_num) + str.splitlines(hit_acc) + str.splitlines(hit_taxid) + str.splitlines(hit_sciname) + str.splitlines(hit_len)             # blastn specific
-        else:
-            hit_info = str.splitlines(hit_num) + str.splitlines(hit_acc) + hit_title + str.splitlines(hit_taxid) + str.splitlines(hit_sciname) + str.splitlines(hit_len) # blastp, blastn
+        elif type(hit_title) == list:
+            hit_info = str.splitlines(hit_num) + str.splitlines(hit_acc) + hit_title + str.splitlines(hit_taxid) + str.splitlines(hit_sciname) + str.splitlines(hit_len) # blastp, blastx
+        elif type(hit_title) == str:
+            hit_info = str.splitlines(hit_num) + str.splitlines(hit_acc) + str.splitlines(hit_title) + str.splitlines(hit_taxid) + str.splitlines(hit_sciname) + str.splitlines(hit_len) # blastp, blastn
         hit_hsps = query_hit.find_all('hsps')
         for hit_hsp in hit_hsps:
             alinum = []
@@ -173,8 +193,10 @@ for result_query in result_queries:
                 pass
         cont_num = len(list(alinum))
         for i in range(cont_num):
-            if mode == 'blastn':
-                tsv_out = query_info + hit_info + alinum[i:i+1] + bitscore[i:i+1] + score[i:i+1] + evalue[i:i+1] + ident[i:i+1] + query_s[i:i+1] + subj_s[i:i+1] + query_f[i:i+1] + query_t[i:i+1] + subj_f[i:i+1] + subj_t[i:i+1] + alilen[i:i+1] + gaps[i:i+1]
+            if mode == 'blastn' and type(hit_title) == list:
+                tsv_out = query_info + hit_info + alinum[i:i+1] + bitscore[i:i+1] + score[i:i+1] + evalue[i:i+1] + ident[i:i+1] + query_s[i:i+1] + subj_s[i:i+1] + query_f[i:i+1] + query_t[i:i+1] + subj_f[i:i+1] + subj_t[i:i+1] + alilen[i:i+1] + gaps[i:i+1] + hit_title
+            elif mode == 'blastn' and type(hit_title) == str:
+                tsv_out = query_info + hit_info + alinum[i:i+1] + bitscore[i:i+1] + score[i:i+1] + evalue[i:i+1] + ident[i:i+1] + query_s[i:i+1] + subj_s[i:i+1] + query_f[i:i+1] + query_t[i:i+1] + subj_f[i:i+1] + subj_t[i:i+1] + alilen[i:i+1] + gaps[i:i+1] + str.splitlines(hit_title)
             elif mode == 'blastp':
                 tsv_out = query_info + hit_info + alinum[i:i+1] + bitscore[i:i+1] + score[i:i+1] + evalue[i:i+1] + ident[i:i+1] + positive[i:i+1] + query_f[i:i+1] + query_t[i:i+1] + subj_f[i:i+1] + subj_t[i:i+1] + alilen[i:i+1] + gaps[i:i+1]
             elif mode == 'blastx':
