@@ -1,10 +1,10 @@
 #!/usr/bin/python3
 
-# 2022-07-07 version 6.0: blastnpxparse.py
+# 2022-07-08 version 6.3: blastnpxparse.py
 
 import sys
 import os
-#import re
+import re
 import subprocess
 import csv
 from bs4 import BeautifulSoup
@@ -21,8 +21,31 @@ file_input = args[1]
 file_prefix_init = os.path.splitext(os.path.basename(file_input))[0]
 file_conversion = '0'
 path_input = os.getcwd()
+annotation_file = file_prefix_init + '.ann'
+ann_file_exist = '0'
 
-# file open
+# file handling
+query_taxid =[]
+query_organism = []
+if os.path.exists(annotation_file) == True:
+    ann_file_exist = '1'
+    print("\nAnnotation file exists.\n\n\nReading file...\n")
+    with open(annotation_file, encoding='utf-8', newline='') as f:
+        annotation_tsv = csv.reader(f, delimiter='\t')
+        header = next(annotation_tsv)      
+        for row in annotation_tsv:
+            if 'db_xref' in row[0]:
+                p1 = r'taxon\:(.*)'
+                taxid_number = re.findall(p1, row[1])
+                query_taxid = query_taxid + taxid_number
+            elif 'organism' in row[0]:
+                query_organism = query_organism + row[1:2]
+            else:
+                pass
+elif os.path.exists(annotation_file) == False:
+    print("\nAnnotation file doesn't exist. Query information will be exracted only from blast result file.\n")
+    pass
+
 with open(file_input, "r", encoding="utf-8") as f:
     headline = f.readline()
     if 'xml' in headline:
@@ -46,25 +69,30 @@ with open(file_input, "r", encoding="utf-8") as f:
         sys.exit("\nError\nInput is neither XML nor ASN.1 file.\nRequirement: blast[n, p, x] output file with run command option '-outfmt 11' (BLAST archive (ASN.1)) or '-outfmt 16' (Single-file BLAST XML2)\n")
 
 if file_conversion == '1':
-    file_conv = file_prefix_init + '_16' + os.path.splitext(os.path.basename(file_input))[1]
-    file_prefix = file_prefix_init + '_16'
-    cmd_list = ['blast_formatter','-archive',file_input,'-out',file_conv,'-outfmt',16]
-    cmd = map(str, cmd_list)
-    blastformatter_run = subprocess.run(cmd)
-    print("\nblast_formatter finished.\n\n\nReading file ...\n")
-    with open(file_conv, "r", encoding="utf-8") as f:
-        blastxml = f.read()
-        if 'blastn' in blastxml:
-            mode = 'blastn'
-            print("\nblastn output file confirmed.\n")
-        elif 'blastp' in blastxml:
-            mode = 'blastp'
-            print("\nblastp output file confirmed.\n")
-        elif 'blastx' in blastxml:
-            mode = 'blastx'
-            print("\nblastx output file confirmed.\n")
+    outfmt = ['0','16'] 
+    for fmt in outfmt:
+        file_conv = file_prefix_init + '_' + fmt + os.path.splitext(os.path.basename(file_input))[1]
+        file_prefix = file_prefix_init + '_' + fmt
+        cmd_list = ['blast_formatter','-archive',file_input,'-out',file_conv,'-outfmt',fmt]
+        cmd = map(str, cmd_list)
+        blastformatter_run = subprocess.run(cmd)
+        print("\nblast_formatter finished.\n\n\nReading file ...\n")
+        if fmt == '16':
+            with open(file_conv, "r", encoding="utf-8") as f:
+                blastxml = f.read()
+                if 'blastn' in blastxml:
+                    mode = 'blastn'
+                    print("\nblastn output file confirmed.\n")
+                elif 'blastp' in blastxml:
+                    mode = 'blastp'
+                    print("\nblastp output file confirmed.\n")
+                elif 'blastx' in blastxml:
+                    mode = 'blastx'
+                    print("\nblastx output file confirmed.\n")
+                else:
+                    sys.exit("\nError\nInput is not blast[n, p, x] file.\nRequirement: blast[n, p, x] output file with run command option '-outfmt 11' (BLAST archive (ASN.1)) or '-outfmt 16' (Single-file BLAST XML2)\n")
         else:
-            sys.exit("\nError\nInput is not blast[n, p, x] file.\nRequirement: blast[n, p, x] output file with run command option '-outfmt 11' (BLAST archive (ASN.1)) or '-outfmt 16' (Single-file BLAST XML2)\n")
+            pass
 elif file_conversion == '0':
     pass
 
@@ -78,7 +106,7 @@ output_file2 = file_prefix + '_' + mode + 'summary.tsv'
 
 print("\nExtracting ...\n")
 
-for result_query in result_queries:
+for loop_count, result_query in enumerate(result_queries):
     if result_query.find('message') is None:
         pass
     elif result_query.find('message').text == 'No hits found':
@@ -90,7 +118,10 @@ for result_query in result_queries:
         continue
     query_acc = result_query.find('query-title').text
     query_len = result_query.find('query-len').text
-    query_info = str.splitlines(query_acc) + str.splitlines(query_len)
+    if ann_file_exist == '1' and mode == 'blastn':
+        query_info = str.splitlines(query_acc) + str.splitlines(query_len) + query_taxid[loop_count:loop_count+1] + query_organism[loop_count:loop_count+1]
+    else:
+        query_info = str.splitlines(query_acc) + str.splitlines(query_len)
     query_hits = result_query.find_all('Hit')
     if mode == 'blastn':
         hit_sciname_total = [] # blastn specific
