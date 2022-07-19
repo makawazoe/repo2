@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# 2022-07-08 version 6.3: blastnpxparse.py
+# 2022-07-19 version 6.4: blastnpxparse.py
 
 import sys
 import os
@@ -103,6 +103,22 @@ result_queries = soup_1.find_all('BlastOutput2')
 # extract and file output
 output_file1 = file_prefix + '_' + mode + 'table.tsv'
 output_file2 = file_prefix + '_' + mode + 'summary.tsv'
+header1 = ["query acc", "query length", "query taxid", "query scientific name", "hit number", "hit acc", "taxid", "scientific name", "hit entry length", "alignment#", "bit-score", "score", "E-value", "identity", "query strand", "hit strand", "query from", "query to", "hit from", "hit to", "alignment length", "gap", "coverage", "identity (%)", "hit title"]
+header2 = ["query acc", "query length", "hit number", "hit acc", "hit title", "taxid", "scientific name", "hit entry length", "alignment#", "bit-score", "score", "E-value", "identity", "positive", "query from", "query to", "hit from", "hit to", "alignment length", "gap", "coverage", "identity (%)"]
+header3 = ["query acc", "query length", "hit number", "hit acc", "hit title", "taxid", "scientific name", "hit entry length", "alignment#", "bit-score", "score", "E-value", "identity", "positive", "query frame", "query from", "query to", "hit from", "hit to", "alignment length", "gap", "coverage", "identity (%)"]
+
+if mode == 'blastn':
+    with open(output_file1, "a", encoding="utf-8") as f:
+        writer = csv.writer(f, delimiter='\t')
+        writer.writerow(header1)
+elif mode == 'blastp':
+    with open(output_file1, "a", encoding="utf-8") as f:
+        writer = csv.writer(f, delimiter='\t')
+        writer.writerow(header2)
+elif mode == 'blastx':
+    with open(output_file1, "a", encoding="utf-8") as f:
+        writer = csv.writer(f, delimiter='\t')
+        writer.writerow(header3)
 
 print("\nExtracting ...\n")
 
